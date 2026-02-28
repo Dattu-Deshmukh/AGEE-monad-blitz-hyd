@@ -63,7 +63,7 @@ function App() {
 
     try {
       // Call AI Engine Backend
-      const res = await fetch('http://localhost:3001/api/evaluate', {
+      const res = await fetch('https://agee-monad-blitz-hyd-backend-1.onrender.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rule })
