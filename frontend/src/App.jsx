@@ -4,7 +4,7 @@ import { Bot, Play, Pause, Activity, Zap, Wallet, ExternalLink, Network } from '
 import './index.css';
 
 // Real Monad Testnet Deployed Contract
-const CONTRACT_ADDRESS = "0x7CcEbAd7E8d23A58310Daf7e8C0aEa190C0942c3";
+const CONTRACT_ADDRESS = "0x7ccebad7e8d23a58310daf7e8c0aea190c0942c3";
 const ABI = [
   "function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external payable",
   "event BatchExecuted(address indexed executor, uint256 totalValue, uint256 transferCount)"
@@ -26,7 +26,18 @@ function App() {
       try {
         const provider = new BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
+
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x279f' }], // Monad Testnet 10143
+          });
+        } catch (switchErr) {
+          console.warn("Could not switch network automatically", switchErr);
+        }
+
+        const activeProvider = new BrowserProvider(window.ethereum);
+        const signer = await activeProvider.getSigner();
         const address = await signer.getAddress();
         setAccount(address);
         addLog(`Wallet connected: ${address}`);
@@ -82,13 +93,26 @@ function App() {
 
     addLog("Preparing Monad Testnet parallel transaction...");
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      let provider = new BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+
+      // Force switch if not on Monad Testnet (10143n)
+      if (network.chainId !== 10143n) {
+        addLog("Wrong network detected. Asking MetaMask to switch to Monad Testnet...");
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x279f' }],
+        });
+        // Re-init provider after switch
+        provider = new BrowserProvider(window.ethereum);
+      }
+
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, ABI, signer);
 
-      // We are sending 0.001 MON split across 3 random addresses to demonstrate batching
-      const amountPerRecipient = parseEther("0.00033");
-      const totalAmount = parseEther("0.001");
+      // We are sending a micro-transaction of 0.000003 MON split across 3 random addresses
+      const amountPerRecipient = parseEther("0.000001");
+      const totalAmount = parseEther("0.000003");
       const recipients = [
         "0x1111111254fb6c44bac0bed2854e76f90643097d", // Example safe addresses
         "0x2222222222222222222222222222222222222222",
