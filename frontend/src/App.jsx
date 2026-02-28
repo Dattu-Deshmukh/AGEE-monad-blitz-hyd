@@ -69,17 +69,23 @@ function App() {
         body: JSON.stringify({ rule })
       });
 
-      const data = await res.json();
-      setAiResult(data);
-      addLog(`AI Decision: ${data.action} (Confidence: ${(data.confidence_score * 100).toFixed(0)}%)`);
-      addLog(`Reasoning: ${data.reasoning}`);
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        const data = await res.json();
+        setAiResult(data);
+        addLog(`AI Decision: ${data.action} (Confidence: ${(data.confidence_score * 100).toFixed(0)}%)`);
+        addLog(`Reasoning: ${data.reasoning}`);
 
-      if (data.action === "EXECUTE") {
-        await executeBlockchainTransaction();
+        if (data.action === "EXECUTE") {
+          await executeBlockchainTransaction();
+        }
+      } else {
+        const text = await res.text();
+        addLog(`Backend is waking up from sleep. Give it 30 seconds and try again!`);
       }
 
     } catch (error) {
-      addLog(`Execution Error: ${error.message}`);
+      addLog(`Execution Error: Backend unreachable or waking up. Please retry in 30s.`);
     } finally {
       setIsProcessing(false);
     }
